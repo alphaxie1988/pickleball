@@ -970,9 +970,27 @@ function drawCourt(){
   `);
   svgParts.push(`<line x1="${sPt.x}" y1="${sPt.y}" x2="${rPt.x}" y2="${rPt.y}" stroke="#ffffff" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrow)" opacity="0.9"/>`);
 
-  // team name labels at each end
-  svgParts.push(`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="#e8f5ee" opacity="0.85">${escapeHtml(cfg.names[0])}</text>`);
-  svgParts.push(`<text x="${W/2}" y="16" text-anchor="middle" font-size="11" fill="#e8f5ee" opacity="0.85">${escapeHtml(cfg.names[1])}</text>`);
+  // player name in each occupied quadrant: doubles has all 4 boxes filled; singles only has
+  // a player standing in the server's box and the receiver's box, the other two are empty.
+  let quadNames;
+  if(state.mode === 'doubles'){
+    quadNames = {
+      BR: playerAtSide(0, 'right'),
+      BL: playerAtSide(0, 'left'),
+      TL: playerAtSide(1, 'right'),
+      TR: playerAtSide(1, 'left')
+    };
+  } else {
+    quadNames = {};
+    quadNames[serverQuad] = currentServerName(serverTeam);
+    quadNames[receiverQuad] = currentReceiverName();
+  }
+  Object.keys(quadNames).forEach(q => {
+    const r = quadRect[q];
+    const nx = r.x + r.w/2;
+    const ny = r.y + 18;
+    svgParts.push(`<text x="${nx}" y="${ny}" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff" stroke="#0a2015" stroke-width="3" paint-order="stroke fill" opacity="0.95">${escapeHtml(quadNames[q])}</text>`);
+  });
 
   svg.innerHTML = svgParts.join('');
 }
