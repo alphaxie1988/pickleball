@@ -101,7 +101,25 @@
   .start-btn:active{transform:scale(.98);}
 
   /* GAME VIEW */
+  #setup.hidden{display:none;}
   #game{display:none;}
+  #game.visible{
+    display:grid;
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "score"
+      "call"
+      "instr"
+      "court"
+      "actions"
+      "log";
+  }
+  #game > .scoreboard{grid-area:score;}
+  #game > .call-score{grid-area:call;}
+  #game > .instruction{grid-area:instr;}
+  #game > .court-wrap{grid-area:court;}
+  #game > .actions{grid-area:actions;}
+  #game > .log{grid-area:log;}
   .scoreboard{
     display:flex;border-radius:16px;overflow:hidden;border:1px solid var(--line);
   }
@@ -177,6 +195,38 @@
 
   .rules-note{font-size:.72rem;color:var(--sub);text-align:center;margin-top:14px;line-height:1.5;}
   .team-preview{font-size:.75rem;color:var(--sub);text-align:center;margin-top:8px;}
+
+  /* LANDSCAPE (rotated phone / short-viewport tablet): put the court beside the
+     controls instead of stacking everything in one tall column. */
+  @media (orientation:landscape) and (max-height:540px){
+    .wrap{max-width:760px;padding:6px 16px 10px;}
+    h1{font-size:.9rem;margin:2px 0 0;}
+    .tagline{display:none;}
+
+    #game.visible{
+      grid-template-columns:minmax(160px,38%) 1fr;
+      grid-template-areas:
+        "court score"
+        "court call"
+        "court instr"
+        "court actions"
+        "court log";
+      column-gap:16px;
+      align-items:start;
+    }
+    #game > .court-wrap{margin-top:0;align-self:start;}
+    svg#court{max-height:80vh;}
+
+    .call-score{margin-top:4px;}
+    .instruction{margin-top:6px;padding:8px 12px;}
+    .instruction .detail{line-height:1.3;}
+    .actions{margin-top:6px;}
+    .log{margin-top:6px;}
+    .log-list{max-height:20vh;}
+
+    /* setup screen: let the two-column player rows breathe with the wider wrap */
+    #setup .card{padding:12px;margin-bottom:10px;}
+  }
 </style>
 </head>
 <body>
@@ -416,8 +466,8 @@ function startGame(){
   };
   history = [];
 
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('game').style.display = 'block';
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.add('visible');
   document.getElementById('overlay').classList.remove('show');
   render();
   saveGame();
@@ -433,8 +483,8 @@ document.getElementById('scoreB').addEventListener('keydown', e => {
 function backToSetup(){
   clearSavedGame();
   document.getElementById('overlay').classList.remove('show');
-  document.getElementById('game').style.display = 'none';
-  document.getElementById('setup').style.display = 'block';
+  document.getElementById('game').classList.remove('visible');
+  document.getElementById('setup').classList.remove('hidden');
 }
 
 function confirmReset(){
@@ -710,8 +760,8 @@ function prefillSetupFromCfg(){
   if(!resumed) return;
   prefillSetupFromCfg();
   if(state && !state.gameOver){
-    document.getElementById('setup').style.display = 'none';
-    document.getElementById('game').style.display = 'block';
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('game').classList.add('visible');
     render();
   } else {
     clearSavedGame();
