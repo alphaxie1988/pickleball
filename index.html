@@ -172,6 +172,7 @@
   .win-card button.secondary{background:var(--panel2);color:var(--text);}
 
   .rules-note{font-size:.72rem;color:var(--sub);text-align:center;margin-top:14px;line-height:1.5;}
+  .team-preview{font-size:.75rem;color:var(--sub);text-align:center;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -189,18 +190,46 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>Team Names</h2>
+    <div class="card" id="namesCardSingles">
+      <h2>Player Names</h2>
       <div class="row2">
         <label class="field">
-          <span id="nameALabel">Team / Player A</span>
-          <input type="text" id="nameA" placeholder="Team A" maxlength="16">
+          <span>Player A</span>
+          <input type="text" id="nameA" placeholder="Player A" maxlength="16">
         </label>
         <label class="field">
-          <span id="nameBLabel">Team / Player B</span>
-          <input type="text" id="nameB" placeholder="Team B" maxlength="16">
+          <span>Player B</span>
+          <input type="text" id="nameB" placeholder="Player B" maxlength="16">
         </label>
       </div>
+    </div>
+
+    <div class="card" id="namesCardDoubles" style="display:none">
+      <h2>Team A Players</h2>
+      <div class="row2">
+        <label class="field">
+          <span>Player 1 (starts serving)</span>
+          <input type="text" id="teamA_p1" placeholder="Player A1" maxlength="14" oninput="updateTeamPreview()">
+        </label>
+        <label class="field">
+          <span>Player 2</span>
+          <input type="text" id="teamA_p2" placeholder="Player A2" maxlength="14" oninput="updateTeamPreview()">
+        </label>
+      </div>
+      <div class="team-preview" id="teamAPreview">Team name: Player A1 &amp; Player A2</div>
+
+      <h2 style="margin-top:16px">Team B Players</h2>
+      <div class="row2">
+        <label class="field">
+          <span>Player 1 (starts serving)</span>
+          <input type="text" id="teamB_p1" placeholder="Player B1" maxlength="14" oninput="updateTeamPreview()">
+        </label>
+        <label class="field">
+          <span>Player 2</span>
+          <input type="text" id="teamB_p2" placeholder="Player B2" maxlength="14" oninput="updateTeamPreview()">
+        </label>
+      </div>
+      <div class="team-preview" id="teamBPreview">Team name: Player B1 &amp; Player B2</div>
     </div>
 
     <div class="card">
@@ -228,7 +257,7 @@
     </div>
 
     <button class="start-btn" onclick="startGame()">Start Game</button>
-    <div class="rules-note">Doubles starts at score 0‑0‑2 — by the rules, the very first serving team only gets <b>one</b> server before the first side‑out.</div>
+    <div class="rules-note">Doubles starts at score 0‑0‑2 — by the rules, the very first serving team only gets <b>one</b> server before the first side‑out. "Player 1" of each team starts in the right/even court.</div>
   </div>
 
   <!-- GAME -->
@@ -305,21 +334,18 @@ function setMode(m){
   cfg.mode = m;
   document.getElementById('modeSingles').classList.toggle('active', m==='singles');
   document.getElementById('modeDoubles').classList.toggle('active', m==='doubles');
-  const labelA = document.getElementById('nameALabel');
-  const labelB = document.getElementById('nameBLabel');
-  const inA = document.getElementById('nameA');
-  const inB = document.getElementById('nameB');
-  if(m==='singles'){
-    labelA.textContent = 'Player A';
-    labelB.textContent = 'Player B';
-    inA.placeholder = 'Player A';
-    inB.placeholder = 'Player B';
-  } else {
-    labelA.textContent = 'Team A';
-    labelB.textContent = 'Team B';
-    inA.placeholder = 'Team A';
-    inB.placeholder = 'Team B';
-  }
+  document.getElementById('namesCardSingles').style.display = m==='singles' ? 'block' : 'none';
+  document.getElementById('namesCardDoubles').style.display = m==='doubles' ? 'block' : 'none';
+  if(m==='doubles') updateTeamPreview();
+}
+
+function updateTeamPreview(){
+  const a1 = document.getElementById('teamA_p1').value.trim() || 'Player A1';
+  const a2 = document.getElementById('teamA_p2').value.trim() || 'Player A2';
+  const b1 = document.getElementById('teamB_p1').value.trim() || 'Player B1';
+  const b2 = document.getElementById('teamB_p2').value.trim() || 'Player B2';
+  document.getElementById('teamAPreview').textContent = `Team name: ${a1} & ${a2}`;
+  document.getElementById('teamBPreview').textContent = `Team name: ${b1} & ${b2}`;
 }
 
 function setTarget(v, el){
@@ -335,12 +361,19 @@ function setFirstServer(i){
 }
 
 function startGame(){
-  const a = document.getElementById('nameA').value.trim();
-  const b = document.getElementById('nameB').value.trim();
-  cfg.names = [
-    a || (cfg.mode==='singles' ? 'Player A' : 'Team A'),
-    b || (cfg.mode==='singles' ? 'Player B' : 'Team B')
-  ];
+  if(cfg.mode === 'doubles'){
+    const a1 = document.getElementById('teamA_p1').value.trim() || 'Player A1';
+    const a2 = document.getElementById('teamA_p2').value.trim() || 'Player A2';
+    const b1 = document.getElementById('teamB_p1').value.trim() || 'Player B1';
+    const b2 = document.getElementById('teamB_p2').value.trim() || 'Player B2';
+    cfg.doublesPlayers = [[a1,a2],[b1,b2]];
+    cfg.names = [`${a1} & ${a2}`, `${b1} & ${b2}`];
+  } else {
+    const a = document.getElementById('nameA').value.trim();
+    const b = document.getElementById('nameB').value.trim();
+    cfg.doublesPlayers = null;
+    cfg.names = [a || 'Player A', b || 'Player B'];
+  }
   cfg.winBy2 = document.getElementById('winBy2').checked;
 
   state = {
@@ -351,7 +384,14 @@ function startGame(){
     firstServiceOfGame: true,
     gameOver: false,
     winner: null,
-    log: []
+    log: [],
+    // doubles only: each team's two players and which one currently stands in the right/even court.
+    // "Player 1" starts right; the pair swaps sides whenever their team keeps serving (scores, or
+    // hands off from server 1 to server 2), and freezes whenever the serve is lost to the other team.
+    teams: cfg.mode==='doubles' ? [
+      { players: cfg.doublesPlayers[0].slice(), rightIdx: 0 },
+      { players: cfg.doublesPlayers[1].slice(), rightIdx: 0 }
+    ] : null
   };
   history = [];
 
@@ -398,28 +438,29 @@ function pointWon(team){
   history.push(cloneState());
 
   const serving = state.servingTeam;
-  const before = describeServer();
 
   if(team === serving){
     state.scores[serving]++;
-    logEvent(`${cfg.names[serving]} scores! ${state.scores[0]}-${state.scores[1]}${state.mode==='doubles' ? '-'+state.serverNumber : ''}`);
+    if(state.mode==='doubles') swapPositions(serving);
+    logEvent(`${cfg.names[serving]} scores! ${state.scores[0]}-${state.scores[1]}${state.mode==='doubles' ? '-'+state.serverNumber : ''} — ${currentServerName(serving)} continues serving`);
     checkGameOver();
   } else {
     // serving side lost the rally
     if(state.mode === 'singles'){
       sideOut();
-      logEvent(`Side out → ${cfg.names[state.servingTeam]} to serve`);
+      logEvent(`Side out → ${currentServerName(state.servingTeam)} to serve`);
     } else {
       if(state.firstServiceOfGame){
         state.firstServiceOfGame = false;
         sideOut();
-        logEvent(`Side out (start of game) → ${cfg.names[state.servingTeam]} to serve`);
+        logEvent(`Side out (start of game) → ${currentServerName(state.servingTeam)} to serve for ${cfg.names[state.servingTeam]}`);
       } else if(state.serverNumber === 1){
         state.serverNumber = 2;
-        logEvent(`Fault → 2nd server for ${cfg.names[serving]}`);
+        swapPositions(serving);
+        logEvent(`Fault → ${currentServerName(serving)} is now 2nd server for ${cfg.names[serving]}`);
       } else {
         sideOut();
-        logEvent(`Side out → ${cfg.names[state.servingTeam]} to serve`);
+        logEvent(`Side out → ${currentServerName(state.servingTeam)} to serve for ${cfg.names[state.servingTeam]}`);
       }
     }
   }
@@ -429,6 +470,35 @@ function pointWon(team){
 function sideOut(){
   state.servingTeam = 1 - state.servingTeam;
   state.serverNumber = 1;
+  // note: no position swap here — each team's court positions freeze until it's their turn to serve again
+}
+
+function swapPositions(team){
+  state.teams[team].rightIdx = 1 - state.teams[team].rightIdx;
+}
+
+// Name of whoever is actually serving for `team` right now (doubles: tracks real court position;
+// singles: the lone player IS the team).
+function currentServerName(team){
+  if(state.mode === 'singles') return cfg.names[team];
+  const side = (state.scores[team] % 2 === 0) ? 'right' : 'left';
+  return playerAtSide(team, side);
+}
+
+// Name of whoever is standing in the given own-court side (right/left) for `team` (doubles only
+// tracks real identities; singles just returns the player's name regardless of side).
+function playerAtSide(team, side){
+  if(state.mode === 'singles') return cfg.names[team];
+  const t = state.teams[team];
+  const idx = side === 'right' ? t.rightIdx : 1 - t.rightIdx;
+  return t.players[idx];
+}
+
+// The serve is always diagonal: the receiver stands in the box with the SAME right/left label
+// as the server, just on the other team's side of the net.
+function currentReceiverName(){
+  const side = servingSide();
+  return playerAtSide(1 - state.servingTeam, side);
 }
 
 function checkGameOver(){
@@ -461,11 +531,6 @@ function toggleLog(){
 }
 
 /* ---------------- Rendering ---------------- */
-function describeServer(){
-  const side = servingSide();
-  return { team: state.servingTeam, side, serverNumber: state.serverNumber };
-}
-
 function render(){
   document.getElementById('ptsA').textContent = state.scores[0];
   document.getElementById('ptsB').textContent = state.scores[1];
@@ -482,17 +547,16 @@ function render(){
   document.getElementById('callScore').textContent = call;
 
   const side = servingSide();
-  const serverName = cfg.names[state.servingTeam];
-  const otherName = cfg.names[1-state.servingTeam];
+  const serverName = currentServerName(state.servingTeam);
+  const receiverName = currentReceiverName();
   const sideLabel = side.toUpperCase();
 
-  let who = `${serverName} serves`;
-  if(state.mode==='doubles'){
-    who += ` &middot; Server ${state.serverNumber}`;
-  }
-  document.getElementById('instrWho').innerHTML = who;
+  document.getElementById('instrWho').innerHTML = `${escapeHtml(serverName)} serves`;
+  const detailPrefix = state.mode==='doubles'
+    ? `Server ${state.serverNumber} of ${escapeHtml(cfg.names[state.servingTeam])} &middot; `
+    : '';
   document.getElementById('instrDetail').innerHTML =
-    `from the <span class="side">${sideLabel}</span> court, diagonally to ${otherName}'s ${sideLabel.toLowerCase()} court`;
+    `${detailPrefix}from the <span class="side">${sideLabel}</span> court, diagonally to ${escapeHtml(receiverName)}'s ${sideLabel.toLowerCase()} court`;
 
   drawCourt();
   renderLog();
