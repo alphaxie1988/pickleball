@@ -126,6 +126,8 @@
   .team-score{
     flex:1;padding:10px 8px;text-align:center;position:relative;background:var(--panel);
   }
+  .team-score.a{border-radius:16px 0 0 16px;}
+  .team-score.b{border-radius:0 16px 16px 0;}
   .team-score.serving{box-shadow:inset 0 0 0 2px var(--accent);}
   .team-score.a{border-right:1px solid var(--line);}
   .team-name{font-size:.72rem;color:var(--sub);text-transform:uppercase;letter-spacing:.05em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -166,6 +168,13 @@
     color:var(--sub);font-weight:600;font-size:.85rem;cursor:pointer;
   }
   .util-btn.danger{color:var(--danger);border-color:#5a2a2c;}
+  .settings-row{justify-content:center;}
+  .icon-toggle{
+    flex:0 1 auto;padding:8px 14px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--sub);font-weight:600;font-size:.78rem;
+    cursor:pointer;opacity:.5;transition:opacity .15s;
+  }
+  .icon-toggle.active{opacity:1;border-color:var(--accent);color:var(--text);background:#2a2416;}
 
   .log{margin-top:8px;}
   .log-toggle{
@@ -344,6 +353,10 @@
         <button class="util-btn" onclick="undo()">↶ Undo</button>
         <button class="util-btn danger" onclick="confirmReset()">⟲ New Game</button>
       </div>
+      <div class="util-row settings-row">
+        <button class="icon-toggle active" id="soundToggle" onclick="toggleSound()" title="Point sounds">🔊 Sound</button>
+        <button class="icon-toggle active" id="voiceToggle" onclick="toggleVoice()" title="Announce score aloud">🗣️ Voice</button>
+      </div>
     </div>
 
     <div class="log">
@@ -398,6 +411,113 @@ function loadSavedGame(){
 
 function clearSavedGame(){
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+}
+
+/* ---------------- Sound & voice preferences (persist independently of any one game) ---------------- */
+const PREFS_KEY = 'pickleballPrefsV1';
+let prefs = { sound: true, voice: true };
+
+(function loadPrefs(){
+  try{
+    const raw = localStorage.getItem(PREFS_KEY);
+    if(raw) prefs = Object.assign(prefs, JSON.parse(raw));
+  }catch(e){}
+})();
+
+function savePrefs(){
+  try{ localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); }catch(e){}
+}
+
+function toggleSound(){
+  prefs.sound = !prefs.sound;
+  document.getElementById('soundToggle').classList.toggle('active', prefs.sound);
+  savePrefs();
+  if(prefs.sound) playTone('a');
+}
+
+function toggleVoice(){
+  prefs.voice = !prefs.voice;
+  document.getElementById('voiceToggle').classList.toggle('active', prefs.voice);
+  savePrefs();
+  if(prefs.voice) speak('Voice on');
+}
+
+function applyPrefsToUI(){
+  document.getElementById('soundToggle').classList.toggle('active', prefs.sound);
+  document.getElementById('voiceToggle').classList.toggle('active', prefs.voice);
+}
+
+/* ---------------- Sound effects (Web Audio API — no audio files needed) ---------------- */
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return null;
+    audioCtx = new Ctx();
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playNote(ctx, freq, startTime, duration, type){
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.28, startTime + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.02);
+}
+
+// 'a' = Team A point (bright ascending sine), 'b' = Team B point (lower ascending triangle),
+// 'sideout' = short neutral tock (no point scored, serve just changes hands), 'win' = little fanfare.
+function playTone(kind){
+  if(!prefs.sound) return;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  try{
+    const t = ctx.currentTime;
+    if(kind === 'a'){
+      playNote(ctx, 587, t, 0.11, 'sine');       // D5
+      playNote(ctx, 784, t + 0.09, 0.16, 'sine'); // G5
+    } else if(kind === 'b'){
+      playNote(ctx, 392, t, 0.11, 'triangle');       // G4
+      playNote(ctx, 494, t + 0.09, 0.16, 'triangle'); // B4
+    } else if(kind === 'sideout'){
+      playNote(ctx, 220, t, 0.09, 'square');
+    } else if(kind === 'win'){
+      playNote(ctx, 523, t, 0.12, 'sine');
+      playNote(ctx, 659, t + 0.12, 0.12, 'sine');
+      playNote(ctx, 784, t + 0.24, 0.28, 'sine');
+    }
+  }catch(e){}
+}
+
+/* ---------------- Voice announcements (Web Speech API) ---------------- */
+function speak(text){
+  if(!prefs.voice || !('speechSynthesis' in window)) return;
+  try{
+    window.speechSynthesis.cancel(); // don't let announcements pile up if tapped quickly
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function announceScore(){
+  if(state.gameOver){
+    speak(`Game! ${cfg.names[state.winner]} wins, ${state.scores[state.winner]} to ${state.scores[1-state.winner]}.`);
+    return;
+  }
+  const serverScore = state.scores[state.servingTeam];
+  const otherScore = state.scores[1-state.servingTeam];
+  const call = state.mode === 'doubles'
+    ? `${serverScore}, ${otherScore}, ${state.serverNumber}`
+    : `${serverScore}, ${otherScore}`;
+  speak(call);
 }
 
 /* ---------------- Setup screen handlers ---------------- */
@@ -469,6 +589,7 @@ function startGame(){
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('game').classList.add('visible');
   document.getElementById('overlay').classList.remove('show');
+  applyPrefsToUI();
   render();
   saveGame();
 }
@@ -541,6 +662,13 @@ function pointWon(team){
   }
   render();
   saveGame();
+
+  if(team === serving){
+    playTone(state.gameOver ? 'win' : (team === 0 ? 'a' : 'b'));
+  } else {
+    playTone('sideout');
+  }
+  announceScore();
 }
 
 function sideOut(){
@@ -762,6 +890,7 @@ function prefillSetupFromCfg(){
   if(state && !state.gameOver){
     document.getElementById('setup').classList.add('hidden');
     document.getElementById('game').classList.add('visible');
+    applyPrefsToUI();
     render();
   } else {
     clearSavedGame();
