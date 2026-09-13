@@ -26,10 +26,34 @@
     --teamB:#f57a3d;
     --teamB-dark:#9a4a1f;
     --accent:#ffd166;
+    --accent-tint:#2a2416;
     --danger:#e5484d;
+    --danger-border:#5a2a2c;
+    --teamA-tap:#12331f;
+    --teamB-tap:#331d10;
     --court:#2c6e49;
     --court-line:#f4f4f4;
     --kitchen:#3f8a5f;
+  }
+  /* OUTDOOR / bright-sunlight mode: same components, high-contrast light palette */
+  body.outdoor{
+    --bg:#f5f6f8;
+    --panel:#ffffff;
+    --panel2:#e8ebf0;
+    --line:#0f172a;
+    --text:#0a0e1a;
+    --sub:#3a4457;
+    --teamA:#0d8f6f;
+    --teamA-dark:#095c47;
+    --teamB:#c1440e;
+    --teamB-dark:#8a3009;
+    --accent:#c9860a;
+    --accent-tint:#fff1cc;
+    --danger:#c62828;
+    --danger-border:#f3b4b4;
+    --teamA-tap:#d3f3e8;
+    --teamB-tap:#ffe2cf;
+    background:var(--bg);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
@@ -40,7 +64,13 @@
     min-height:100vh;
     padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
   }
-  .wrap{max-width:480px;margin:0 auto;padding:12px 16px 20px;}
+  .wrap{max-width:480px;margin:0 auto;padding:12px 16px 20px;position:relative;}
+  .theme-toggle{
+    position:absolute;top:8px;right:12px;width:36px;height:36px;border-radius:10px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--sub);font-size:1.05rem;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.6;
+  }
+  .theme-toggle.active{opacity:1;background:var(--accent-tint);border-color:var(--accent);}
   h1{
     font-size:1.15rem;text-align:center;margin:4px 0 2px;
     letter-spacing:.02em;
@@ -92,7 +122,7 @@
     flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);
     background:var(--panel2);color:var(--sub);font-weight:700;cursor:pointer;
   }
-  .server-pick button.active{border-color:var(--accent);color:var(--accent);background:#2a2416;}
+  .server-pick button.active{border-color:var(--accent);color:var(--accent);background:var(--accent-tint);}
   .start-btn{
     width:100%;padding:16px;border:none;border-radius:14px;background:var(--accent);
     color:#20242c;font-size:1.05rem;font-weight:800;letter-spacing:.02em;cursor:pointer;
@@ -136,8 +166,8 @@
   .team-points{font-size:2rem;font-weight:800;line-height:1.1;margin-top:2px;}
   .team-score.tappable{cursor:pointer;-webkit-user-select:none;user-select:none;transition:transform .08s;}
   .team-score.tappable:active{transform:scale(.96);}
-  .team-score.a.tappable:active{background:#12331f;}
-  .team-score.b.tappable:active{background:#331d10;}
+  .team-score.a.tappable:active{background:var(--teamA-tap);}
+  .team-score.b.tappable:active{background:var(--teamB-tap);}
   .tap-hint{font-size:.62rem;color:var(--sub);opacity:.75;margin-top:4px;letter-spacing:.02em;}
   .serve-dot{
     display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);
@@ -167,14 +197,14 @@
     flex:1;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);
     color:var(--sub);font-weight:600;font-size:.85rem;cursor:pointer;
   }
-  .util-btn.danger{color:var(--danger);border-color:#5a2a2c;}
+  .util-btn.danger{color:var(--danger);border-color:var(--danger-border);}
   .settings-row{justify-content:center;}
   .icon-toggle{
     flex:0 1 auto;padding:8px 14px;border-radius:10px;border:1px solid var(--line);
     background:var(--panel2);color:var(--sub);font-weight:600;font-size:.78rem;
     cursor:pointer;opacity:.5;transition:opacity .15s;
   }
-  .icon-toggle.active{opacity:1;border-color:var(--accent);color:var(--text);background:#2a2416;}
+  .icon-toggle.active{opacity:1;border-color:var(--accent);color:var(--text);background:var(--accent-tint);}
 
   .log{margin-top:8px;}
   .log-toggle{
@@ -240,6 +270,7 @@
 </head>
 <body>
 <div class="wrap">
+  <button class="theme-toggle" id="outdoorToggle" onclick="toggleOutdoor()" title="Outdoor / bright-sunlight mode">☀️</button>
   <h1>🏓 Pickleball Scorekeeper</h1>
   <div class="tagline">Track the score &amp; learn who serves, and where</div>
 
@@ -356,6 +387,7 @@
       <div class="util-row settings-row">
         <button class="icon-toggle active" id="soundToggle" onclick="toggleSound()" title="Point sounds">🔊 Sound</button>
         <button class="icon-toggle active" id="voiceToggle" onclick="toggleVoice()" title="Announce score aloud">🗣️ Voice</button>
+        <button class="icon-toggle active" id="vibrateToggle" onclick="toggleVibrate()" title="Vibrate on point" style="display:none">📳 Vibrate</button>
       </div>
     </div>
 
@@ -374,6 +406,14 @@
     <p id="winSub">15 - 9</p>
     <button onclick="rematch()">Play Again (swap first server)</button>
     <button class="secondary" onclick="backToSetup()">New Setup</button>
+  </div>
+</div>
+
+<div class="overlay" id="switchOverlay">
+  <div class="win-card">
+    <h2>🔄 Switch Sides!</h2>
+    <p id="switchSub">Halfway point reached — teams change ends of the court.</p>
+    <button onclick="dismissSwitchSides()">Got it</button>
   </div>
 </div>
 
@@ -415,7 +455,7 @@ function clearSavedGame(){
 
 /* ---------------- Sound & voice preferences (persist independently of any one game) ---------------- */
 const PREFS_KEY = 'pickleballPrefsV1';
-let prefs = { sound: true, voice: true };
+let prefs = { sound: true, voice: true, outdoor: false, vibrate: true };
 
 (function loadPrefs(){
   try{
@@ -442,10 +482,34 @@ function toggleVoice(){
   if(prefs.voice) speak('Voice on');
 }
 
+function toggleVibrate(){
+  prefs.vibrate = !prefs.vibrate;
+  document.getElementById('vibrateToggle').classList.toggle('active', prefs.vibrate);
+  savePrefs();
+  if(prefs.vibrate) vibrate(40);
+}
+
+// Outdoor/bright-sunlight mode is a global look, not tied to any one game —
+// apply it to <body> immediately so it affects setup and game screens alike.
+function toggleOutdoor(){
+  prefs.outdoor = !prefs.outdoor;
+  document.body.classList.toggle('outdoor', prefs.outdoor);
+  document.getElementById('outdoorToggle').classList.toggle('active', prefs.outdoor);
+  savePrefs();
+}
+
 function applyPrefsToUI(){
   document.getElementById('soundToggle').classList.toggle('active', prefs.sound);
   document.getElementById('voiceToggle').classList.toggle('active', prefs.voice);
+  const vibrateBtn = document.getElementById('vibrateToggle');
+  if('vibrate' in navigator){
+    vibrateBtn.style.display = '';
+    vibrateBtn.classList.toggle('active', prefs.vibrate);
+  }
 }
+
+document.body.classList.toggle('outdoor', prefs.outdoor);
+document.getElementById('outdoorToggle').classList.toggle('active', prefs.outdoor);
 
 /* ---------------- Sound effects (Web Audio API — no audio files needed) ---------------- */
 let audioCtx = null;
@@ -473,7 +537,8 @@ function playNote(ctx, freq, startTime, duration, type){
 }
 
 // 'a' = Team A point (bright ascending sine), 'b' = Team B point (lower ascending triangle),
-// 'sideout' = short neutral tock (no point scored, serve just changes hands), 'win' = little fanfare.
+// 'sideout' = short neutral tock (no point scored, serve just changes hands), 'win' = little
+// fanfare, 'switch' = alert double-beep (halfway-point side switch reminder).
 function playTone(kind){
   if(!prefs.sound) return;
   const ctx = getAudioCtx();
@@ -492,8 +557,25 @@ function playTone(kind){
       playNote(ctx, 523, t, 0.12, 'sine');
       playNote(ctx, 659, t + 0.12, 0.12, 'sine');
       playNote(ctx, 784, t + 0.24, 0.28, 'sine');
+    } else if(kind === 'switch'){
+      playNote(ctx, 660, t, 0.11, 'square');
+      playNote(ctx, 660, t + 0.19, 0.11, 'square');
     }
   }catch(e){}
+}
+
+/* ---------------- Vibration (Android; iOS Safari has no Vibration API and silently no-ops) ---------------- */
+const VIBRATION_PATTERNS = { a: 35, b: 35, sideout: [25,55,25], win: [60,60,60,60,200], switch: [90,90,90] };
+
+function vibrate(pattern){
+  if(!prefs.vibrate) return;
+  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+}
+
+// Plays the matching sound and vibration pattern together for a given cue kind.
+function cue(kind){
+  playTone(kind);
+  vibrate(VIBRATION_PATTERNS[kind]);
 }
 
 /* ---------------- Voice announcements (Web Speech API) ---------------- */
@@ -577,6 +659,7 @@ function startGame(){
     firstServiceOfGame: true,
     gameOver: false,
     winner: null,
+    sidesSwitched: false,
     log: [],
     // doubles only: each team's two players and which one currently stands in the right/even court.
     // "Player 1" starts right; the pair swaps sides whenever their team keeps serving (scores, or
@@ -591,6 +674,7 @@ function startGame(){
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('game').classList.add('visible');
   document.getElementById('overlay').classList.remove('show');
+  document.getElementById('switchOverlay').classList.remove('show');
   applyPrefsToUI();
   render();
   saveGame();
@@ -606,6 +690,7 @@ document.getElementById('scoreB').addEventListener('keydown', e => {
 function backToSetup(){
   clearSavedGame();
   document.getElementById('overlay').classList.remove('show');
+  document.getElementById('switchOverlay').classList.remove('show');
   document.getElementById('game').classList.remove('visible');
   document.getElementById('setup').classList.remove('hidden');
 }
@@ -636,12 +721,14 @@ function pointWon(team){
   history.push(cloneState());
 
   const serving = state.servingTeam;
+  let justSwitched = false;
 
   if(team === serving){
     state.scores[serving]++;
     if(state.mode==='doubles') swapPositions(serving);
     logEvent(`${cfg.names[serving]} scores! ${state.scores[0]}-${state.scores[1]}${state.mode==='doubles' ? '-'+state.serverNumber : ''} — ${currentServerName(serving)} continues serving`);
     checkGameOver();
+    justSwitched = checkSwitchSides();
   } else {
     // serving side lost the rally
     if(state.mode === 'singles'){
@@ -666,11 +753,41 @@ function pointWon(team){
   saveGame();
 
   if(team === serving){
-    playTone(state.gameOver ? 'win' : (team === 0 ? 'a' : 'b'));
+    cue(state.gameOver ? 'win' : (team === 0 ? 'a' : 'b'));
   } else {
-    playTone('sideout');
+    cue('sideout');
   }
   announceScore();
+
+  if(justSwitched){
+    cue('switch');
+    speak('Time to switch sides.');
+    showSwitchOverlay();
+  }
+}
+
+// Official rule: teams change ends when the first side reaches the halfway score
+// (6 in an 11-point game, 8 in a 15-point game, 11 in a 21-point game). Returns
+// true the one time this triggers for the current game.
+function checkSwitchSides(){
+  if(state.sidesSwitched || state.gameOver) return false;
+  const switchAt = Math.floor(cfg.target/2) + 1;
+  if(state.scores[0] >= switchAt || state.scores[1] >= switchAt){
+    state.sidesSwitched = true;
+    logEvent(`🔄 Switch sides! (halfway point, ${switchAt}, reached)`);
+    return true;
+  }
+  return false;
+}
+
+function showSwitchOverlay(){
+  const switchAt = Math.floor(cfg.target/2) + 1;
+  document.getElementById('switchSub').textContent = `Halfway point (${switchAt}) reached — teams change ends of the court.`;
+  document.getElementById('switchOverlay').classList.add('show');
+}
+
+function dismissSwitchSides(){
+  document.getElementById('switchOverlay').classList.remove('show');
 }
 
 function sideOut(){
@@ -723,6 +840,7 @@ function undo(){
   if(history.length === 0) return;
   state = history.pop();
   document.getElementById('overlay').classList.remove('show');
+  document.getElementById('switchOverlay').classList.remove('show');
   render();
   saveGame();
 }
