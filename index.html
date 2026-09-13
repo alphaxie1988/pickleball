@@ -517,7 +517,9 @@ function announceScore(){
   const call = state.mode === 'doubles'
     ? `${serverScore}, ${otherScore}, ${state.serverNumber}`
     : `${serverScore}, ${otherScore}`;
-  speak(call);
+  const serverName = currentServerName(state.servingTeam);
+  const side = servingSide();
+  speak(`${call}. ${serverName} serves from the ${side} court.`);
 }
 
 /* ---------------- Setup screen handlers ---------------- */
