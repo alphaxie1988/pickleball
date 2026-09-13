@@ -970,10 +970,6 @@ function drawCourt(){
   `);
   svgParts.push(`<line x1="${sPt.x}" y1="${sPt.y}" x2="${rPt.x}" y2="${rPt.y}" stroke="#ffffff" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrow)" opacity="0.9"/>`);
 
-  // labels
-  svgParts.push(`<text x="${sPt.x}" y="${sPt.y+5}" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1a1a">S</text>`);
-  svgParts.push(`<text x="${rPt.x}" y="${rPt.y+5}" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">R</text>`);
-
   // team name labels at each end
   svgParts.push(`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="#e8f5ee" opacity="0.85">${escapeHtml(cfg.names[0])}</text>`);
   svgParts.push(`<text x="${W/2}" y="16" text-anchor="middle" font-size="11" fill="#e8f5ee" opacity="0.85">${escapeHtml(cfg.names[1])}</text>`);
