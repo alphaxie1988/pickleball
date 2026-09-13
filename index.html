@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Pickleball Scorekeeper</title>
+<meta name="description" content="Track pickleball score and learn who serves, and where.">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pickleball">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
   :root{
     --bg:#0f172a;
@@ -105,6 +114,11 @@
   .team-score.a .team-name{color:var(--teamA);}
   .team-score.b .team-name{color:var(--teamB);}
   .team-points{font-size:2.4rem;font-weight:800;line-height:1.1;margin-top:2px;}
+  .team-score.tappable{cursor:pointer;-webkit-user-select:none;user-select:none;transition:transform .08s;}
+  .team-score.tappable:active{transform:scale(.96);}
+  .team-score.a.tappable:active{background:#12331f;}
+  .team-score.b.tappable:active{background:#331d10;}
+  .tap-hint{font-size:.62rem;color:var(--sub);opacity:.75;margin-top:4px;letter-spacing:.02em;}
   .serve-dot{
     display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);
     margin-left:6px;vertical-align:middle;
@@ -128,16 +142,6 @@
   svg#court{width:100%;height:auto;display:block;}
 
   .actions{margin-top:16px;}
-  .win-btns{display:flex;gap:10px;}
-  .win-btn{
-    flex:1;padding:18px 8px;border:none;border-radius:14px;font-weight:800;font-size:.95rem;
-    color:#fff;cursor:pointer;line-height:1.3;
-  }
-  .win-btn small{display:block;font-weight:600;font-size:.7rem;opacity:.85;margin-top:2px;}
-  .win-btn.a{background:linear-gradient(180deg,var(--teamA),var(--teamA-dark));}
-  .win-btn.b{background:linear-gradient(180deg,var(--teamB),var(--teamB-dark));}
-  .win-btn:active{transform:scale(.97);}
-
   .util-row{display:flex;gap:10px;margin-top:10px;}
   .util-btn{
     flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);
@@ -263,13 +267,15 @@
   <!-- GAME -->
   <div id="game">
     <div class="scoreboard">
-      <div class="team-score a" id="scoreA">
+      <div class="team-score a tappable" id="scoreA" onclick="pointWon(0)" role="button" tabindex="0">
         <div class="team-name" id="dispNameA">Team A</div>
         <div class="team-points" id="ptsA">0</div>
+        <div class="tap-hint">tap when they win the point</div>
       </div>
-      <div class="team-score b" id="scoreB">
+      <div class="team-score b tappable" id="scoreB" onclick="pointWon(1)" role="button" tabindex="0">
         <div class="team-name" id="dispNameB">Team B</div>
         <div class="team-points" id="ptsB">0</div>
+        <div class="tap-hint">tap when they win the point</div>
       </div>
     </div>
     <div class="call-score">Score call: <b id="callScore">0-0-2</b></div>
@@ -284,14 +290,6 @@
     </div>
 
     <div class="actions">
-      <div class="win-btns">
-        <button class="win-btn a" id="winA" onclick="pointWon(0)">
-          <span id="winALabel">Team A</span> wins rally<small>tap when they win the point</small>
-        </button>
-        <button class="win-btn b" id="winB" onclick="pointWon(1)">
-          <span id="winBLabel">Team B</span> wins rally<small>tap when they win the point</small>
-        </button>
-      </div>
       <div class="util-row">
         <button class="util-btn" onclick="undo()">↶ Undo</button>
         <button class="util-btn danger" onclick="confirmReset()">⟲ New Game</button>
@@ -328,6 +326,29 @@ let cfg = {
 
 let state = null; // live game state
 let history = [];
+
+/* ---------------- Persistence (survive an accidental refresh/close mid-game) ---------------- */
+const STORAGE_KEY = 'pickleballGameV1';
+
+function saveGame(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({cfg, state})); }catch(e){}
+}
+
+function loadSavedGame(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const saved = JSON.parse(raw);
+    if(!saved || !saved.cfg || !saved.state) return false;
+    cfg = saved.cfg;
+    state = saved.state;
+    return true;
+  }catch(e){ return false; }
+}
+
+function clearSavedGame(){
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+}
 
 /* ---------------- Setup screen handlers ---------------- */
 function setMode(m){
@@ -395,18 +416,22 @@ function startGame(){
   };
   history = [];
 
-  document.getElementById('dispNameA').textContent = cfg.names[0];
-  document.getElementById('dispNameB').textContent = cfg.names[1];
-  document.getElementById('winALabel').textContent = cfg.names[0];
-  document.getElementById('winBLabel').textContent = cfg.names[1];
-
   document.getElementById('setup').style.display = 'none';
   document.getElementById('game').style.display = 'block';
   document.getElementById('overlay').classList.remove('show');
   render();
+  saveGame();
 }
 
+document.getElementById('scoreA').addEventListener('keydown', e => {
+  if(e.key==='Enter' || e.key===' '){ e.preventDefault(); pointWon(0); }
+});
+document.getElementById('scoreB').addEventListener('keydown', e => {
+  if(e.key==='Enter' || e.key===' '){ e.preventDefault(); pointWon(1); }
+});
+
 function backToSetup(){
+  clearSavedGame();
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('game').style.display = 'none';
   document.getElementById('setup').style.display = 'block';
@@ -465,6 +490,7 @@ function pointWon(team){
     }
   }
   render();
+  saveGame();
 }
 
 function sideOut(){
@@ -518,6 +544,7 @@ function undo(){
   state = history.pop();
   document.getElementById('overlay').classList.remove('show');
   render();
+  saveGame();
 }
 
 function logEvent(text){
@@ -659,6 +686,38 @@ function drawCourt(){
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+/* ---------------- Boot: resume an in-progress game, or prefill setup from last config ---------------- */
+function prefillSetupFromCfg(){
+  setMode(cfg.mode);
+  if(cfg.doublesPlayers){
+    document.getElementById('teamA_p1').value = cfg.doublesPlayers[0][0];
+    document.getElementById('teamA_p2').value = cfg.doublesPlayers[0][1];
+    document.getElementById('teamB_p1').value = cfg.doublesPlayers[1][0];
+    document.getElementById('teamB_p2').value = cfg.doublesPlayers[1][1];
+    updateTeamPreview();
+  } else if(cfg.mode === 'singles'){
+    document.getElementById('nameA').value = cfg.names[0];
+    document.getElementById('nameB').value = cfg.names[1];
+  }
+  document.querySelectorAll('#targetChips .chip').forEach(c => c.classList.toggle('active', Number(c.dataset.v) === cfg.target));
+  document.getElementById('winBy2').checked = cfg.winBy2;
+  setFirstServer(cfg.firstServer);
+}
+
+(function boot(){
+  const resumed = loadSavedGame();
+  if(!resumed) return;
+  prefillSetupFromCfg();
+  if(state && !state.gameOver){
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+    render();
+  } else {
+    clearSavedGame();
+    state = null;
+  }
+})();
 </script>
 </body>
 </html>
