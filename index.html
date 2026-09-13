@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pickleball Scorekeeper</title>
+<style>
+  :root{
+    --bg:#0f172a;
+    --panel:#16213a;
+    --panel2:#1c2947;
+    --line:#2c3b5c;
+    --text:#eef2fb;
+    --sub:#9fb0d0;
+    --teamA:#22c1a3;
+    --teamA-dark:#0e6b58;
+    --teamB:#f57a3d;
+    --teamB-dark:#9a4a1f;
+    --accent:#ffd166;
+    --danger:#e5484d;
+    --court:#2c6e49;
+    --court-line:#f4f4f4;
+    --kitchen:#3f8a5f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(circle at top, #1b2a4a, var(--bg) 60%);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+  }
+  .wrap{max-width:480px;margin:0 auto;padding:16px 16px 40px;}
+  h1{
+    font-size:1.3rem;text-align:center;margin:8px 0 4px;
+    letter-spacing:.02em;
+  }
+  .tagline{text-align:center;color:var(--sub);font-size:.8rem;margin-bottom:18px;}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:16px;margin-bottom:14px;
+  }
+  .card h2{margin:0 0 12px;font-size:.95rem;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
+  .seg{
+    display:flex;background:var(--panel2);border-radius:12px;padding:4px;gap:4px;
+  }
+  .seg button{
+    flex:1;border:none;background:transparent;color:var(--sub);padding:12px 8px;
+    border-radius:9px;font-size:.95rem;font-weight:600;cursor:pointer;transition:.15s;
+  }
+  .seg button.active{background:var(--accent);color:#20242c;}
+  label.field{display:block;margin-top:12px;}
+  label.field span{display:block;font-size:.78rem;color:var(--sub);margin-bottom:6px;}
+  input[type=text]{
+    width:100%;padding:12px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--text);font-size:1rem;
+  }
+  .row2{display:flex;gap:10px;}
+  .row2>label{flex:1;}
+  .chipset{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .chip{
+    padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--sub);font-size:.85rem;font-weight:600;cursor:pointer;
+  }
+  .chip.active{background:var(--accent);color:#20242c;border-color:var(--accent);}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;}
+  .toggle-row span{font-size:.85rem;color:var(--sub);}
+  .switch{position:relative;width:46px;height:26px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{
+    position:absolute;inset:0;background:var(--panel2);border:1px solid var(--line);
+    border-radius:999px;cursor:pointer;transition:.2s;
+  }
+  .slider:before{
+    content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;
+    background:var(--sub);border-radius:50%;transition:.2s;
+  }
+  .switch input:checked + .slider{background:var(--accent);border-color:var(--accent);}
+  .switch input:checked + .slider:before{transform:translateX(20px);background:#20242c;}
+  .server-pick{display:flex;gap:8px;margin-top:8px;}
+  .server-pick button{
+    flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--sub);font-weight:700;cursor:pointer;
+  }
+  .server-pick button.active{border-color:var(--accent);color:var(--accent);background:#2a2416;}
+  .start-btn{
+    width:100%;padding:16px;border:none;border-radius:14px;background:var(--accent);
+    color:#20242c;font-size:1.05rem;font-weight:800;letter-spacing:.02em;cursor:pointer;
+    margin-top:6px;
+  }
+  .start-btn:active{transform:scale(.98);}
+
+  /* GAME VIEW */
+  #game{display:none;}
+  .scoreboard{
+    display:flex;border-radius:16px;overflow:hidden;border:1px solid var(--line);
+  }
+  .team-score{
+    flex:1;padding:14px 8px;text-align:center;position:relative;background:var(--panel);
+  }
+  .team-score.serving{box-shadow:inset 0 0 0 2px var(--accent);}
+  .team-score.a{border-right:1px solid var(--line);}
+  .team-name{font-size:.72rem;color:var(--sub);text-transform:uppercase;letter-spacing:.05em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .team-score.a .team-name{color:var(--teamA);}
+  .team-score.b .team-name{color:var(--teamB);}
+  .team-points{font-size:2.4rem;font-weight:800;line-height:1.1;margin-top:2px;}
+  .serve-dot{
+    display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);
+    margin-left:6px;vertical-align:middle;
+    animation:pulse 1.2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .call-score{
+    text-align:center;color:var(--sub);font-size:.85rem;margin-top:8px;letter-spacing:.05em;
+  }
+  .call-score b{color:var(--text);font-size:1rem;}
+
+  .instruction{
+    margin-top:14px;background:var(--panel);border:1px solid var(--accent);border-radius:14px;
+    padding:14px 16px;text-align:center;
+  }
+  .instruction .who{font-size:1.05rem;font-weight:700;margin-bottom:4px;}
+  .instruction .who .side{color:var(--accent);}
+  .instruction .detail{font-size:.82rem;color:var(--sub);}
+
+  .court-wrap{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;}
+  svg#court{width:100%;height:auto;display:block;}
+
+  .actions{margin-top:16px;}
+  .win-btns{display:flex;gap:10px;}
+  .win-btn{
+    flex:1;padding:18px 8px;border:none;border-radius:14px;font-weight:800;font-size:.95rem;
+    color:#fff;cursor:pointer;line-height:1.3;
+  }
+  .win-btn small{display:block;font-weight:600;font-size:.7rem;opacity:.85;margin-top:2px;}
+  .win-btn.a{background:linear-gradient(180deg,var(--teamA),var(--teamA-dark));}
+  .win-btn.b{background:linear-gradient(180deg,var(--teamB),var(--teamB-dark));}
+  .win-btn:active{transform:scale(.97);}
+
+  .util-row{display:flex;gap:10px;margin-top:10px;}
+  .util-btn{
+    flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--sub);font-weight:600;font-size:.85rem;cursor:pointer;
+  }
+  .util-btn.danger{color:var(--danger);border-color:#5a2a2c;}
+
+  .log{margin-top:14px;}
+  .log-toggle{
+    width:100%;text-align:left;background:none;border:none;color:var(--sub);
+    font-size:.8rem;padding:6px 2px;cursor:pointer;display:flex;justify-content:space-between;
+  }
+  .log-list{max-height:160px;overflow-y:auto;font-size:.78rem;color:var(--sub);display:none;padding-top:4px;}
+  .log-list div{padding:4px 2px;border-bottom:1px solid var(--line);}
+  .log-list.open{display:block;}
+
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(6,10,22,.85);
+    align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .overlay.show{display:flex;}
+  .win-card{
+    background:var(--panel);border:1px solid var(--accent);border-radius:20px;padding:28px 24px;
+    text-align:center;max-width:340px;width:100%;
+  }
+  .win-card h2{margin:0 0 6px;font-size:1.4rem;}
+  .win-card p{color:var(--sub);margin:0 0 20px;}
+  .win-card button{
+    width:100%;padding:14px;border:none;border-radius:12px;background:var(--accent);
+    color:#20242c;font-weight:800;font-size:1rem;cursor:pointer;margin-top:8px;
+  }
+  .win-card button.secondary{background:var(--panel2);color:var(--text);}
+
+  .rules-note{font-size:.72rem;color:var(--sub);text-align:center;margin-top:14px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏓 Pickleball Scorekeeper</h1>
+  <div class="tagline">Track the score &amp; learn who serves, and where</div>
+
+  <!-- SETUP -->
+  <div id="setup">
+    <div class="card">
+      <h2>Match Type</h2>
+      <div class="seg">
+        <button id="modeSingles" class="active" onclick="setMode('singles')">Singles</button>
+        <button id="modeDoubles" onclick="setMode('doubles')">Doubles</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Team Names</h2>
+      <div class="row2">
+        <label class="field">
+          <span id="nameALabel">Team / Player A</span>
+          <input type="text" id="nameA" placeholder="Team A" maxlength="16">
+        </label>
+        <label class="field">
+          <span id="nameBLabel">Team / Player B</span>
+          <input type="text" id="nameB" placeholder="Team B" maxlength="16">
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Game Point</h2>
+      <div class="chipset" id="targetChips">
+        <div class="chip" data-v="11" onclick="setTarget(11,this)">11 points</div>
+        <div class="chip active" data-v="15" onclick="setTarget(15,this)">15 points</div>
+        <div class="chip" data-v="21" onclick="setTarget(21,this)">21 points</div>
+      </div>
+      <div class="toggle-row">
+        <span>Win by 2</span>
+        <label class="switch">
+          <input type="checkbox" id="winBy2" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Who Serves First?</h2>
+      <div class="server-pick">
+        <button id="firstA" class="active" onclick="setFirstServer(0)">Team A</button>
+        <button id="firstB" onclick="setFirstServer(1)">Team B</button>
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="startGame()">Start Game</button>
+    <div class="rules-note">Doubles starts at score 0‑0‑2 — by the rules, the very first serving team only gets <b>one</b> server before the first side‑out.</div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game">
+    <div class="scoreboard">
+      <div class="team-score a" id="scoreA">
+        <div class="team-name" id="dispNameA">Team A</div>
+        <div class="team-points" id="ptsA">0</div>
+      </div>
+      <div class="team-score b" id="scoreB">
+        <div class="team-name" id="dispNameB">Team B</div>
+        <div class="team-points" id="ptsB">0</div>
+      </div>
+    </div>
+    <div class="call-score">Score call: <b id="callScore">0-0-2</b></div>
+
+    <div class="instruction">
+      <div class="who" id="instrWho">Team A serves</div>
+      <div class="detail" id="instrDetail">from the <span class="side">RIGHT</span> court, diagonally to Team B's right court</div>
+    </div>
+
+    <div class="court-wrap">
+      <svg id="court" viewBox="0 0 220 420" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="actions">
+      <div class="win-btns">
+        <button class="win-btn a" id="winA" onclick="pointWon(0)">
+          <span id="winALabel">Team A</span> wins rally<small>tap when they win the point</small>
+        </button>
+        <button class="win-btn b" id="winB" onclick="pointWon(1)">
+          <span id="winBLabel">Team B</span> wins rally<small>tap when they win the point</small>
+        </button>
+      </div>
+      <div class="util-row">
+        <button class="util-btn" onclick="undo()">↶ Undo</button>
+        <button class="util-btn danger" onclick="confirmReset()">⟲ New Game</button>
+      </div>
+    </div>
+
+    <div class="log">
+      <button class="log-toggle" onclick="toggleLog()">
+        <span>Point history</span><span id="logArrow">▾</span>
+      </button>
+      <div class="log-list" id="logList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="win-card">
+    <h2 id="winTitle">🏆 Team A Wins!</h2>
+    <p id="winSub">15 - 9</p>
+    <button onclick="rematch()">Play Again (swap first server)</button>
+    <button class="secondary" onclick="backToSetup()">New Setup</button>
+  </div>
+</div>
+
+<script>
+/* ---------------- State ---------------- */
+let cfg = {
+  mode: 'singles',
+  names: ['Team A','Team B'],
+  target: 15,
+  winBy2: true,
+  firstServer: 0
+};
+
+let state = null; // live game state
+let history = [];
+
+/* ---------------- Setup screen handlers ---------------- */
+function setMode(m){
+  cfg.mode = m;
+  document.getElementById('modeSingles').classList.toggle('active', m==='singles');
+  document.getElementById('modeDoubles').classList.toggle('active', m==='doubles');
+  const labelA = document.getElementById('nameALabel');
+  const labelB = document.getElementById('nameBLabel');
+  const inA = document.getElementById('nameA');
+  const inB = document.getElementById('nameB');
+  if(m==='singles'){
+    labelA.textContent = 'Player A';
+    labelB.textContent = 'Player B';
+    inA.placeholder = 'Player A';
+    inB.placeholder = 'Player B';
+  } else {
+    labelA.textContent = 'Team A';
+    labelB.textContent = 'Team B';
+    inA.placeholder = 'Team A';
+    inB.placeholder = 'Team B';
+  }
+}
+
+function setTarget(v, el){
+  cfg.target = v;
+  document.querySelectorAll('#targetChips .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setFirstServer(i){
+  cfg.firstServer = i;
+  document.getElementById('firstA').classList.toggle('active', i===0);
+  document.getElementById('firstB').classList.toggle('active', i===1);
+}
+
+function startGame(){
+  const a = document.getElementById('nameA').value.trim();
+  const b = document.getElementById('nameB').value.trim();
+  cfg.names = [
+    a || (cfg.mode==='singles' ? 'Player A' : 'Team A'),
+    b || (cfg.mode==='singles' ? 'Player B' : 'Team B')
+  ];
+  cfg.winBy2 = document.getElementById('winBy2').checked;
+
+  state = {
+    mode: cfg.mode,
+    scores: [0,0],
+    servingTeam: cfg.firstServer,
+    serverNumber: cfg.mode==='doubles' ? 2 : 1, // doubles: game opens on "server 2" per official rule
+    firstServiceOfGame: true,
+    gameOver: false,
+    winner: null,
+    log: []
+  };
+  history = [];
+
+  document.getElementById('dispNameA').textContent = cfg.names[0];
+  document.getElementById('dispNameB').textContent = cfg.names[1];
+  document.getElementById('winALabel').textContent = cfg.names[0];
+  document.getElementById('winBLabel').textContent = cfg.names[1];
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  document.getElementById('overlay').classList.remove('show');
+  render();
+}
+
+function backToSetup(){
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('setup').style.display = 'block';
+}
+
+function confirmReset(){
+  if(confirm('Start a new game? Current score will be lost.')){
+    backToSetup();
+  }
+}
+
+function rematch(){
+  cfg.firstServer = 1 - cfg.firstServer;
+  startGame();
+}
+
+/* ---------------- Game logic ---------------- */
+function servingSide(){
+  // even score -> right/even court, odd score -> left/odd court
+  return (state.scores[state.servingTeam] % 2 === 0) ? 'right' : 'left';
+}
+
+function cloneState(){
+  return JSON.parse(JSON.stringify(state));
+}
+
+function pointWon(team){
+  if(!state || state.gameOver) return;
+  history.push(cloneState());
+
+  const serving = state.servingTeam;
+  const before = describeServer();
+
+  if(team === serving){
+    state.scores[serving]++;
+    logEvent(`${cfg.names[serving]} scores! ${state.scores[0]}-${state.scores[1]}${state.mode==='doubles' ? '-'+state.serverNumber : ''}`);
+    checkGameOver();
+  } else {
+    // serving side lost the rally
+    if(state.mode === 'singles'){
+      sideOut();
+      logEvent(`Side out → ${cfg.names[state.servingTeam]} to serve`);
+    } else {
+      if(state.firstServiceOfGame){
+        state.firstServiceOfGame = false;
+        sideOut();
+        logEvent(`Side out (start of game) → ${cfg.names[state.servingTeam]} to serve`);
+      } else if(state.serverNumber === 1){
+        state.serverNumber = 2;
+        logEvent(`Fault → 2nd server for ${cfg.names[serving]}`);
+      } else {
+        sideOut();
+        logEvent(`Side out → ${cfg.names[state.servingTeam]} to serve`);
+      }
+    }
+  }
+  render();
+}
+
+function sideOut(){
+  state.servingTeam = 1 - state.servingTeam;
+  state.serverNumber = 1;
+}
+
+function checkGameOver(){
+  const [a,b] = state.scores;
+  const hi = Math.max(a,b);
+  if(hi >= cfg.target){
+    if(!cfg.winBy2 || Math.abs(a-b) >= 2){
+      state.gameOver = true;
+      state.winner = a > b ? 0 : 1;
+      logEvent(`🏆 ${cfg.names[state.winner]} wins the game ${a}-${b}!`);
+    }
+  }
+}
+
+function undo(){
+  if(history.length === 0) return;
+  state = history.pop();
+  document.getElementById('overlay').classList.remove('show');
+  render();
+}
+
+function logEvent(text){
+  state.log.push(text);
+}
+
+function toggleLog(){
+  const el = document.getElementById('logList');
+  el.classList.toggle('open');
+  document.getElementById('logArrow').textContent = el.classList.contains('open') ? '▴' : '▾';
+}
+
+/* ---------------- Rendering ---------------- */
+function describeServer(){
+  const side = servingSide();
+  return { team: state.servingTeam, side, serverNumber: state.serverNumber };
+}
+
+function render(){
+  document.getElementById('ptsA').textContent = state.scores[0];
+  document.getElementById('ptsB').textContent = state.scores[1];
+  document.getElementById('scoreA').classList.toggle('serving', state.servingTeam===0);
+  document.getElementById('scoreB').classList.toggle('serving', state.servingTeam===1);
+
+  // serve dot
+  document.getElementById('dispNameA').innerHTML = cfg.names[0] + (state.servingTeam===0 ? ' <span class="serve-dot"></span>' : '');
+  document.getElementById('dispNameB').innerHTML = cfg.names[1] + (state.servingTeam===1 ? ' <span class="serve-dot"></span>' : '');
+
+  const call = state.mode==='doubles'
+    ? `${state.scores[state.servingTeam]}-${state.scores[1-state.servingTeam]}-${state.serverNumber}`
+    : `${state.scores[state.servingTeam]}-${state.scores[1-state.servingTeam]}`;
+  document.getElementById('callScore').textContent = call;
+
+  const side = servingSide();
+  const serverName = cfg.names[state.servingTeam];
+  const otherName = cfg.names[1-state.servingTeam];
+  const sideLabel = side.toUpperCase();
+
+  let who = `${serverName} serves`;
+  if(state.mode==='doubles'){
+    who += ` &middot; Server ${state.serverNumber}`;
+  }
+  document.getElementById('instrWho').innerHTML = who;
+  document.getElementById('instrDetail').innerHTML =
+    `from the <span class="side">${sideLabel}</span> court, diagonally to ${otherName}'s ${sideLabel.toLowerCase()} court`;
+
+  drawCourt();
+  renderLog();
+
+  if(state.gameOver){
+    document.getElementById('winTitle').textContent = `🏆 ${cfg.names[state.winner]} Wins!`;
+    document.getElementById('winSub').textContent = `${state.scores[0]} - ${state.scores[1]}`;
+    document.getElementById('overlay').classList.add('show');
+  }
+}
+
+function renderLog(){
+  const el = document.getElementById('logList');
+  el.innerHTML = state.log.slice().reverse().map(l=>`<div>${l}</div>`).join('');
+}
+
+/* ---------------- Court diagram ---------------- */
+function drawCourt(){
+  const svg = document.getElementById('court');
+  const W = 220, H = 420;
+  const netY = H/2;
+  const kitchenDepth = (7/22) * (H/2); // 7ft of 22ft half-length
+  const midX = W/2;
+
+  // Team A occupies bottom half (y: netY..H), Team B occupies top half (y: 0..netY)
+  // Team A's own-right = screen-right (x: midX..W), own-left = screen-left (x:0..midX)
+  // Team B's own-right = screen-left (mirrored, x:0..midX), own-left = screen-right (x:midX..W)
+
+  const side = servingSide(); // 'right' | 'left'
+  const serverTeam = state.servingTeam;
+
+  // determine highlighted quadrants in screen coords: 'BL','BR','TL','TR'
+  let serverQuad, receiverQuad;
+  if(serverTeam === 0){
+    serverQuad = side === 'right' ? 'BR' : 'BL';
+  } else {
+    serverQuad = side === 'right' ? 'TL' : 'TR';
+  }
+  const diagonal = { BR:'TL', TL:'BR', BL:'TR', TR:'BL' };
+  receiverQuad = diagonal[serverQuad];
+
+  const quadRect = {
+    BL: {x:0, y:netY+kitchenDepth, w:midX, h:(H/2-kitchenDepth)},
+    BR: {x:midX, y:netY+kitchenDepth, w:midX, h:(H/2-kitchenDepth)},
+    TL: {x:0, y:0, w:midX, h:(H/2-kitchenDepth)},
+    TR: {x:midX, y:0, w:midX, h:(H/2-kitchenDepth)}
+  };
+
+  function centerOf(q){
+    const r = quadRect[q];
+    return { x: r.x + r.w/2, y: r.y + r.h/2 };
+  }
+
+  const sPt = centerOf(serverQuad);
+  const rPt = centerOf(receiverQuad);
+
+  let svgParts = [];
+  // outer court
+  svgParts.push(`<rect x="1" y="1" width="${W-2}" height="${H-2}" fill="var(--court)" stroke="var(--court-line)" stroke-width="2" rx="6"/>`);
+  // kitchen zones
+  svgParts.push(`<rect x="1" y="${netY-kitchenDepth}" width="${W-2}" height="${kitchenDepth}" fill="var(--kitchen)" opacity="0.55"/>`);
+  svgParts.push(`<rect x="1" y="${netY}" width="${W-2}" height="${kitchenDepth}" fill="var(--kitchen)" opacity="0.55"/>`);
+  // kitchen lines
+  svgParts.push(`<line x1="0" y1="${netY-kitchenDepth}" x2="${W}" y2="${netY-kitchenDepth}" stroke="var(--court-line)" stroke-width="1.5"/>`);
+  svgParts.push(`<line x1="0" y1="${netY+kitchenDepth}" x2="${W}" y2="${netY+kitchenDepth}" stroke="var(--court-line)" stroke-width="1.5"/>`);
+  // net
+  svgParts.push(`<line x1="0" y1="${netY}" x2="${W}" y2="${netY}" stroke="#111827" stroke-width="4"/>`);
+  // center service lines (baseline to kitchen line, each half)
+  svgParts.push(`<line x1="${midX}" y1="0" x2="${midX}" y2="${netY-kitchenDepth}" stroke="var(--court-line)" stroke-width="1.5"/>`);
+  svgParts.push(`<line x1="${midX}" y1="${netY+kitchenDepth}" x2="${midX}" y2="${H}" stroke="var(--court-line)" stroke-width="1.5"/>`);
+
+  // highlight server quadrant
+  const sq = quadRect[serverQuad];
+  svgParts.push(`<rect x="${sq.x+3}" y="${sq.y+3}" width="${sq.w-6}" height="${sq.h-6}" fill="var(--accent)" opacity="0.35" stroke="var(--accent)" stroke-width="2.5" rx="4"/>`);
+  // highlight receiver quadrant (dashed)
+  const rq = quadRect[receiverQuad];
+  svgParts.push(`<rect x="${rq.x+3}" y="${rq.y+3}" width="${rq.w-6}" height="${rq.h-6}" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="6,5" rx="4" opacity="0.85"/>`);
+
+  // arrow from server to receiver
+  svgParts.push(`
+    <defs>
+      <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 z" fill="#ffffff"/>
+      </marker>
+    </defs>
+  `);
+  svgParts.push(`<line x1="${sPt.x}" y1="${sPt.y}" x2="${rPt.x}" y2="${rPt.y}" stroke="#ffffff" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrow)" opacity="0.9"/>`);
+
+  // labels
+  svgParts.push(`<text x="${sPt.x}" y="${sPt.y+5}" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1a1a">S</text>`);
+  svgParts.push(`<text x="${rPt.x}" y="${rPt.y+5}" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">R</text>`);
+
+  // team name labels at each end
+  svgParts.push(`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="#e8f5ee" opacity="0.85">${escapeHtml(cfg.names[0])}</text>`);
+  svgParts.push(`<text x="${W/2}" y="16" text-anchor="middle" font-size="11" fill="#e8f5ee" opacity="0.85">${escapeHtml(cfg.names[1])}</text>`);
+
+  svg.innerHTML = svgParts.join('');
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
